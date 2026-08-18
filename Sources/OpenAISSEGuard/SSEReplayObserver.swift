@@ -254,17 +254,33 @@ public struct SSEReplayObserver: Sendable {
     }
 
     private static func parse(_ frame: [UInt8]) -> ParsedEvent? {
-        guard let text = String(bytes: frame, encoding: .utf8) else { return nil }
-
         var eventType: String?
         var dataLines: [String] = []
-        let lines = text.split(
-            omittingEmptySubsequences: false,
-            whereSeparator: { $0 == "\n" || $0 == "\r" }
-        )
+        var lines: [[UInt8]] = []
+        var line: [UInt8] = []
+        var index = 0
+
+        // Split at ASCII line endings before decoding. Swift's Character view
+        // can treat CRLF as one extended grapheme, which would merge fields.
+        while index < frame.count {
+            switch frame[index] {
+            case 10: // LF
+                lines.append(line)
+                line.removeAll(keepingCapacity: true)
+                index += 1
+            case 13: // CR or CRLF
+                lines.append(line)
+                line.removeAll(keepingCapacity: true)
+                index += (index + 1 < frame.count && frame[index + 1] == 10) ? 2 : 1
+            default:
+                line.append(frame[index])
+                index += 1
+            }
+        }
+        lines.append(line)
 
         for rawLine in lines {
-            let line = String(rawLine)
+            guard let line = String(bytes: rawLine, encoding: .utf8) else { return nil }
             if line.isEmpty || line.hasPrefix(":") { continue }
             guard let colon = line.firstIndex(of: ":") else { continue }
 
