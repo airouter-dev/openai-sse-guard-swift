@@ -259,8 +259,8 @@ public struct SSEReplayObserver: Sendable {
         var eventType: String?
         var dataLines: [String] = []
         let lines = text.split(
-            whereSeparator: { $0 == "\n" || $0 == "\r" },
-            omittingEmptySubsequences: false
+            omittingEmptySubsequences: false,
+            whereSeparator: { $0 == "\n" || $0 == "\r" }
         )
 
         for rawLine in lines {
